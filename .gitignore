@@ -1,0 +1,11 @@
+node_modules/
+.env
+.DS_Store
+*.log
+.vscode/
+.idea/
+dist/
+build/
+
+# 테이블 구조 파일들 (문서화용으로 로컬에만 보관)
+scripts/*.sql
