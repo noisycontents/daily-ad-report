@@ -1,0 +1,37 @@
+name: Daily Meta to Supabase
+
+# ① 언제 실행할지 설정
+on:
+  schedule:
+    # KST 자정(00:00)에 실행하려면 UTC 기준 '0 15 * * *' 사용
+    - cron: '0 15 * * *'
+  # 수동 실행도 가능하게 워크플로우 디스패치 허용
+  workflow_dispatch: 
+
+jobs:
+  fetch-and-upsert:
+    name: Fetch Meta & Upsert to Supabase
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) 리포지토리 체크아웃
+      - uses: actions/checkout@v3
+
+      # 2) Node.js 환경 세팅
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'   # 필요 시 버전 조정
+
+      # 3) 의존성 설치
+      - name: Install dependencies
+        run: npm ci
+
+      # 4) 스크립트 실행
+      - name: Fetch Meta & upsert to Supabase
+        env:
+          META_TOKEN: ${{ secrets.META_TOKEN }}
+          AD_ACCOUNT: ${{ secrets.AD_ACCOUNT }}
+          SUPA_URL:   ${{ secrets.SUPA_URL }}
+          SUPA_KEY:   ${{ secrets.SUPA_KEY }}
+        run: node scripts/fetch-and-upsert.js
