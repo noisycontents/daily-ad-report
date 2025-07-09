@@ -29,6 +29,7 @@ jobs:
 
       # 4) Meta 데이터 수집
       - name: Fetch Meta & upsert to Supabase
+        continue-on-error: true  # Meta 실패해도 계속 진행
         env:
           META_TOKEN: ${{ secrets.META_TOKEN }}
           AD_ACCOUNT: ${{ secrets.AD_ACCOUNT }}
@@ -38,6 +39,7 @@ jobs:
 
       # 5) Naver 데이터 수집
       - name: Fetch Naver & upsert to Supabase
+        continue-on-error: true  # Naver 실패해도 워크플로우는 성공으로 표시
         env:
           NAVER_API_KEY: ${{ secrets.NAVER_API_KEY }}
           NAVER_SECRET_KEY: ${{ secrets.NAVER_SECRET_KEY }}
