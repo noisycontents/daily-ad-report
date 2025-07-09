@@ -34,4 +34,4 @@ jobs:
           AD_ACCOUNT: ${{ secrets.AD_ACCOUNT }}
           SUPA_URL:   ${{ secrets.SUPA_URL }}
           SUPA_KEY:   ${{ secrets.SUPA_KEY }}
-        run: node scripts/fetch-and-upsert.js
+        run: node scripts/fetch-meta.js

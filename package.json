@@ -4,7 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "fetch:all": "node scripts/fetch-all-platforms.js",
+    "fetch:meta": "node scripts/fetch-all-platforms.js meta",
+    "fetch:naver": "node scripts/fetch-all-platforms.js naver",
+    "fetch:google": "node scripts/fetch-all-platforms.js google",
+    "dev": "npm run fetch:all"
   },
   "repository": {
     "type": "git",
@@ -20,9 +25,11 @@
   "homepage": "https://github.com/noisycontents/daily-ad-report#readme",
   "dependencies": {
     "@supabase/supabase-js": "^2.50.3",
+    "axios": "^1.10.0",
+    "csv-parse": "^5.6.0",
     "dotenv": "^17.0.1",
+    "google-ads-api": "^20.0.1",
     "googleapis": "^150.0.1",
-    "node-cron": "^4.2.0",
     "node-fetch": "^3.3.2"
   }
 }

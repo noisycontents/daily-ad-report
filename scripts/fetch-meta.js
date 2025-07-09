@@ -1,4 +1,4 @@
-// scripts/fetch-and-upsert.js
+// scripts/fetch-meta.js
 
 import fetch from 'node-fetch';
 import { createClient } from '@supabase/supabase-js';
@@ -95,6 +95,12 @@ async function fetchAndUpsert() {
   console.log(`📝 처리된 데이터 (${rows.length}건):`, rows);
 
   // 3) Supabase upsert (date, campaign 기준 중복 방지)
+  if (rows.length > 0) {
+    const now = new Date().toISOString();
+    rows.forEach(row => {
+      row.updated_at = now;
+    });
+  }
   console.log('💾 Supabase에 데이터 저장 중...');
   const { data: upsertData, error } = await supa
     .from('meta_insights')
@@ -116,3 +122,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.exit(1);
   });
 }
+
+// 함수 export (통합 스크립트에서 사용)
+export { fetchAndUpsert as fetchMetaData }; 
