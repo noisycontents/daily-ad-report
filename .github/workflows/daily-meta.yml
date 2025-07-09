@@ -1,16 +1,16 @@
-name: Daily Meta to Supabase
+name: Daily Ad Data to Supabase
 
 # ① 언제 실행할지 설정
 on:
   schedule:
-    # KST 자정(00:00)에 실행하려면 UTC 기준 '0 15 * * *' 사용
-    - cron: '0 15 * * *'
+    # 서울시간 아침 9시(UTC 자정 00:00)에 실행
+    - cron: '0 0 * * *'
   # 수동 실행도 가능하게 워크플로우 디스패치 허용
   workflow_dispatch: 
 
 jobs:
   fetch-and-upsert:
-    name: Fetch Meta & Upsert to Supabase
+    name: Fetch All Platforms & Upsert to Supabase
     runs-on: ubuntu-latest
 
     steps:
@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # 4) 스크립트 실행
+      # 4) Meta 데이터 수집
       - name: Fetch Meta & upsert to Supabase
         env:
           META_TOKEN: ${{ secrets.META_TOKEN }}
@@ -35,3 +35,13 @@ jobs:
           SUPA_URL:   ${{ secrets.SUPA_URL }}
           SUPA_KEY:   ${{ secrets.SUPA_KEY }}
         run: node scripts/fetch-meta.js
+
+      # 5) Naver 데이터 수집
+      - name: Fetch Naver & upsert to Supabase
+        env:
+          NAVER_API_KEY: ${{ secrets.NAVER_API_KEY }}
+          NAVER_SECRET_KEY: ${{ secrets.NAVER_SECRET_KEY }}
+          NAVER_CUSTOMER_ID: ${{ secrets.NAVER_CUSTOMER_ID }}
+          SUPA_URL: ${{ secrets.SUPA_URL }}
+          SUPA_KEY: ${{ secrets.SUPA_KEY }}
+        run: node scripts/fetch-naver.js
