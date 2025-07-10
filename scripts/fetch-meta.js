@@ -23,13 +23,22 @@ console.log('SUPA_KEY:', SUPA_KEY ? '✅ 설정됨' : '❌ 없음');
 // Supabase 클라이언트
 const supa = createClient(SUPA_URL, SUPA_KEY);
 
+// KST 기준 어제 날짜 계산
+const getKSTYesterday = () => {
+  const now = new Date();
+  const kstOffset = 9 * 60 * 60 * 1000; // UTC+9
+  const kstNow = new Date(now.getTime() + kstOffset);
+  const kstYesterday = new Date(kstNow.getTime() - 24 * 60 * 60 * 1000);
+  return kstYesterday.toISOString().slice(0, 10);
+};
+
 async function fetchAndUpsert() {
-  const today = new Date().toISOString().slice(0,10);
-  console.log(`\n📅 ${today} 데이터 수집 시작...`);
+  const yesterday = getKSTYesterday();
+  console.log(`\n📅 ${yesterday} 데이터 수집 시작 (KST 기준 어제)...`);
 
   // 1) Meta API 호출: action_values 필드 추가
   const url = `https://graph.facebook.com/v16.0/${AD_ACCOUNT}/insights` +
-              `?time_range={'since':'${today}','until':'${today}'}` +
+              `?time_range={'since':'${yesterday}','until':'${yesterday}'}` +
               `&fields=date_start,spend,impressions,clicks,actions,action_values,cost_per_action_type` +
               `&access_token=${META_TOKEN}`;
 
@@ -112,7 +121,7 @@ async function fetchAndUpsert() {
   }
   
   console.log('💾 Supabase 응답:', upsertData);
-  console.log(`✅ ${today} 데이터 ${rows.length}건 upsert 완료`);
+  console.log(`✅ ${yesterday} 데이터 ${rows.length}건 upsert 완료`);
 }
 
 // 스크립트 직접 실행 시 (ES modules 방식)
