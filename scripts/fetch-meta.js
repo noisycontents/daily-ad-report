@@ -66,25 +66,25 @@ async function fetchAndUpsert() {
     const linkClicks = linkClickAction ? Number(linkClickAction.value) : 0;
 
     // 구매 관련 지표 추출
-    const purchaseCountAction = (r.actions || []).find(a => a.action_type === 'purchase');
-    const purchaseValueAction = (r.action_values || []).find(a => a.action_type === 'purchase');
+    const conversionCountAction = (r.actions || []).find(a => a.action_type === 'purchase');
+    const conversionValueAction = (r.action_values || []).find(a => a.action_type === 'purchase');
     
-    const purchaseCount = purchaseCountAction ? Number(purchaseCountAction.value) : 0;
-    const purchaseValue = purchaseValueAction ? Number(purchaseValueAction.value) : 0;
+    const conversionCount = conversionCountAction ? Number(conversionCountAction.value) : 0;
+    const conversionValue = conversionValueAction ? Number(conversionValueAction.value) : 0;
 
     // CPA 계산 (API 값 우선, fallback으로 계산)
     const cpaEntry = (r.cost_per_action_type || []).find(a => a.action_type === 'purchase');
     const cpa = cpaEntry
       ? Number(cpaEntry.value)
-      : (purchaseCount ? spend / purchaseCount : 0);
+      : (conversionCount ? spend / conversionCount : 0);
 
     // 핵심 지표 계산
     const ctr = impressions ? linkClicks / impressions : 0;
     const cpc = linkClicks ? spend / linkClicks : 0;
-    const cvr = linkClicks ? purchaseCount / linkClicks : 0;
+    const cvr = linkClicks ? conversionCount / linkClicks : 0;
     const cpm = impressions ? (spend / impressions) * 1000 : 0;
-    const roas = spend ? (purchaseValue / spend) : 0;
-    const aov = purchaseCount ? (purchaseValue / purchaseCount) : 0;
+    const roas = spend ? (conversionValue / spend) : 0;
+    const aov = conversionCount ? (conversionValue / conversionCount) : 0;
 
     return {
       date,
@@ -94,8 +94,8 @@ async function fetchAndUpsert() {
       clicks: linkClicks,
       ctr,
       cpc,
-      purchase: purchaseCount,
-      purchase_value: purchaseValue,
+      conversion: conversionCount,
+      conversion_value: conversionValue,
       roas,
       cvr,
       cpm,
