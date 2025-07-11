@@ -3,8 +3,8 @@ name: Daily Ad Data to Supabase
 # ① 언제 실행할지 설정
 on:
   schedule:
-    # 서울시간 아침 9시(UTC 자정 00:00)에 실행
-    - cron: '0 0 * * *'
+    # 서울시간 아침 8시(UTC 23:00)에 실행
+    - cron: '0 23 * * *'
   # 수동 실행도 가능하게 워크플로우 디스패치 허용
   workflow_dispatch: 
 
