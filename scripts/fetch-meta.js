@@ -36,7 +36,7 @@ async function fetchAndUpsert() {
   const yesterday = getKSTYesterday();
   console.log(`\n📅 ${yesterday} 데이터 수집 시작 (KST 기준 어제)...`);
 
-  // 1) Meta API 호출: action_values 필드 추가
+  // 1) Meta API 호출
   const url = `https://graph.facebook.com/v16.0/${AD_ACCOUNT}/insights` +
               `?time_range={'since':'${yesterday}','until':'${yesterday}'}` +
               `&fields=date_start,spend,impressions,clicks,actions,action_values,cost_per_action_type` +
@@ -55,61 +55,65 @@ async function fetchAndUpsert() {
   console.log('📊 Meta API 응답:', responseData);
   const { data } = responseData;
 
-  // 2) 각 행별로 누락된 지표 계산
+  // 2) 데이터 처리 및 지표 계산
   const rows = data.map(r => {
-    const date         = r.date_start;
-    const spend        = Number(r.spend);
-    const impressions  = Number(r.impressions);
-    const clicks       = Number(r.clicks);
+    const date = r.date_start;
+    const spend = Number(r.spend);
+    const impressions = Number(r.impressions);
+    
+    // 링크클릭수 추출 (실제 마케팅 지표)
+    const linkClickAction = (r.actions || []).find(a => a.action_type === 'link_click');
+    const linkClicks = linkClickAction ? Number(linkClickAction.value) : 0;
 
-    // 구매 관련: actions(건수)와 action_values(금액) 분리
+    // 구매 관련 지표 추출
     const purchaseCountAction = (r.actions || []).find(a => a.action_type === 'purchase');
     const purchaseValueAction = (r.action_values || []).find(a => a.action_type === 'purchase');
     
-    const purchaseCount  = purchaseCountAction ? Number(purchaseCountAction.value) : 0;
-    const purchaseValue  = purchaseValueAction ? Number(purchaseValueAction.value) : 0;
+    const purchaseCount = purchaseCountAction ? Number(purchaseCountAction.value) : 0;
+    const purchaseValue = purchaseValueAction ? Number(purchaseValueAction.value) : 0;
 
-    // CPA fallback
+    // CPA 계산 (API 값 우선, fallback으로 계산)
     const cpaEntry = (r.cost_per_action_type || []).find(a => a.action_type === 'purchase');
-    const CPA = cpaEntry
+    const cpa = cpaEntry
       ? Number(cpaEntry.value)
       : (purchaseCount ? spend / purchaseCount : 0);
 
-    // 나머지 지표 계산
-    const CTR  = impressions ? clicks / impressions : 0;
-    const CPC  = clicks ? spend / clicks : 0;
-    const CVR  = clicks ? purchaseCount / clicks : 0;
-    const CPM  = impressions ? (spend / impressions) * 1000 : 0;
-    const ROAS = spend ? (purchaseValue / spend) : 0;
-    const AOV  = purchaseCount ? (purchaseValue / purchaseCount) : 0;
+    // 핵심 지표 계산
+    const ctr = impressions ? linkClicks / impressions : 0;
+    const cpc = linkClicks ? spend / linkClicks : 0;
+    const cvr = linkClicks ? purchaseCount / linkClicks : 0;
+    const cpm = impressions ? (spend / impressions) * 1000 : 0;
+    const roas = spend ? (purchaseValue / spend) : 0;
+    const aov = purchaseCount ? (purchaseValue / purchaseCount) : 0;
 
     return {
-      date,            // 날짜
-      campaign: 'daily-auto-fetch', // 캠페인명 (기본값)
-      spend,           // 광고비
-      impressions,     // 노출
-      clicks,          // 클릭수
-      ctr: CTR,        // 클릭률 (소문자)
-      cpc: CPC,        // 클릭당비용 (소문자)
-      purchase:        purchaseCount,    // 구매 건수
-      purchase_value:  purchaseValue,    // 구매금액 합계
-      roas: ROAS,      // 광고수익률 (소문자)
-      cvr: CVR,        // 전환율 (소문자)
-      cpm: CPM,        // 천회노출단가 (소문자)
-      cpa: CPA,        // 액션당비용 (소문자)
-      aov: AOV,        // 평균주문금액 (소문자)
+      date,
+      campaign: 'Meta',
+      spend,
+      impressions,
+      clicks: linkClicks,
+      ctr,
+      cpc,
+      purchase: purchaseCount,
+      purchase_value: purchaseValue,
+      roas,
+      cvr,
+      cpm,
+      cpa,
+      aov,
     };
   });
 
   console.log(`📝 처리된 데이터 (${rows.length}건):`, rows);
 
-  // 3) Supabase upsert (date, campaign 기준 중복 방지)
+  // 3) Supabase에 데이터 저장
   if (rows.length > 0) {
     const now = new Date().toISOString();
     rows.forEach(row => {
       row.updated_at = now;
     });
   }
+  
   console.log('💾 Supabase에 데이터 저장 중...');
   const { data: upsertData, error } = await supa
     .from('meta_insights')

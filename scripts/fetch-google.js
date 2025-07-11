@@ -20,24 +20,27 @@ const SUPA_KEY = process.env.SUPA_KEY;
 // Supabase 클라이언트
 const supa = createClient(SUPA_URL, SUPA_KEY);
 
+// KST 기준 어제 날짜 계산
+const getKSTYesterday = () => {
+  const now = new Date();
+  const kstOffset = 9 * 60 * 60 * 1000; // UTC+9
+  const kstNow = new Date(now.getTime() + kstOffset);
+  const kstYesterday = new Date(kstNow.getTime() - 24 * 60 * 60 * 1000);
+  return kstYesterday.toISOString().slice(0, 10);
+};
+
 async function fetchGoogleData() {
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const yesterday = getKSTYesterday();
   
   console.log(`\n📅 구글 광고 데이터 수집 시작 (${yesterday})...`);
 
   // 환경변수 확인
-  console.log('🔧 구글 API 환경변수 체크:');
-  console.log('GOOGLE_CLIENT_EMAIL:', GOOGLE_CLIENT_EMAIL ? '✅ 설정됨' : '❌ 없음');
-  console.log('GOOGLE_PRIVATE_KEY:', GOOGLE_PRIVATE_KEY ? '✅ 설정됨' : '❌ 없음');
-  console.log('GOOGLE_DEVELOPER_TOKEN:', GOOGLE_DEVELOPER_TOKEN ? '✅ 설정됨' : '❌ 없음');
-  console.log('GOOGLE_CUSTOMER_ID (MCC):', GOOGLE_CUSTOMER_ID ? '✅ 설정됨' : '❌ 없음');
-  console.log('GOOGLE_CLIENT_CUSTOMER_ID (광고계정):', GOOGLE_CLIENT_CUSTOMER_ID ? '✅ 설정됨' : '❌ 없음');
-
   if (!GOOGLE_CLIENT_EMAIL || !GOOGLE_PRIVATE_KEY || !GOOGLE_DEVELOPER_TOKEN || !GOOGLE_CUSTOMER_ID) {
     console.error('❌ 구글 API 환경변수가 설정되지 않았습니다.');
     return;
   }
+
+  console.log('🔧 환경변수 체크 완료');
 
   try {
     // 1) 인증 방식 선택 (OAuth2 vs Service Account)
@@ -82,6 +85,7 @@ async function fetchGoogleData() {
         campaign.id,
         campaign.name,
         campaign.status,
+        campaign.advertising_channel_type,
         metrics.impressions,
         metrics.clicks,
         metrics.cost_micros,
@@ -94,16 +98,13 @@ async function fetchGoogleData() {
         metrics.conversions_from_interactions_rate
       FROM campaign 
       WHERE segments.date = '${yesterday}'
-      AND campaign.status = 'ENABLED'
+      AND campaign.status IN ('ENABLED', 'PAUSED')
       ORDER BY metrics.cost_micros DESC
     `;
 
     // MCC 계정 ID와 실제 광고 계정 ID 분리 (대시 제거)
     const mccCustomerId = GOOGLE_CUSTOMER_ID.replace(/-/g, ''); // MCC 계정 (login-customer-id)
     const clientCustomerId = GOOGLE_CLIENT_CUSTOMER_ID.replace(/-/g, ''); // 실제 광고 계정 (API 엔드포인트)
-    
-    console.log(`🏢 MCC 계정 ID: ${mccCustomerId}`);
-    console.log(`📊 광고 계정 ID: ${clientCustomerId}`);
     
     // Google Ads API v20 REST 엔드포인트 (실제 광고 계정 ID 사용)
     const apiUrl = `https://googleads.googleapis.com/v20/customers/${clientCustomerId}/googleAds:search`;
@@ -135,62 +136,97 @@ async function fetchGoogleData() {
 
     console.log('📊 구글 광고 API 응답 받음:', results.length, '건');
 
-    // 3) 데이터 변환 및 지표 계산
-    const rows = results.map(row => {
-      const campaign = row.campaign;
-      const metrics = row.metrics;
+    // 3) 캠페인 타입별로 데이터 분류 및 집계
+    const regularCampaigns = results.filter(row => 
+      row.campaign.advertisingChannelType !== 'PERFORMANCE_MAX'
+    );
+    const pmaxCampaigns = results.filter(row => 
+      row.campaign.advertisingChannelType === 'PERFORMANCE_MAX'
+    );
 
-      // 기본 데이터 (Google은 마이크로 단위로 제공)
-      const spend = Number(metrics.costMicros || 0) / 1000000; // 마이크로 → 원화
-      const impressions = Number(metrics.impressions || 0);
-      const clicks = Number(metrics.clicks || 0);
-      const conversion = Number(metrics.conversions || 0);
-      const conversionValue = Number(metrics.conversionsValue || 0);
+    console.log(`📊 일반 캠페인: ${regularCampaigns.length}건, PMAX 캠페인: ${pmaxCampaigns.length}건`);
 
-      // 기본 지표 계산 (Google API에서 일부 제공되지만 일관성을 위해 직접 계산)
-      const ctr = impressions ? clicks / impressions : 0;
-      const cpc = clicks ? spend / clicks : 0;
-      const cvr = clicks ? conversion / clicks : 0;
-      const cpm = impressions ? (spend / impressions) * 1000 : 0;
-      const cpa = conversion ? spend / conversion : 0;
-      const roas = spend ? conversionValue / spend : 0;
-      const aov = conversion ? conversionValue / conversion : 0;
+    // 데이터 집계 함수
+    function aggregateData(campaigns, campaignName) {
+      if (campaigns.length === 0) return null;
 
-      // 구글 특화 지표
-      const searchImprShare = Number(metrics.searchImpressionShare || 0) * 100; // 퍼센트로 변환
-      const qualityScore = 0; // 키워드 레벨에서만 제공되므로 캠페인 레벨에서는 0
-      const topImprRate = 0; // 별도 쿼리 필요
+      let totalSpend = 0;
+      let totalImpressions = 0;
+      let totalClicks = 0;
+      let totalConversion = 0;
+      let totalConversionValue = 0;
+      let totalSearchImprShare = 0;
+      let searchImprShareCount = 0;
+
+      campaigns.forEach(row => {
+        const metrics = row.metrics;
+        totalSpend += Number(metrics.costMicros || 0) / 1000000;
+        totalImpressions += Number(metrics.impressions || 0);
+        totalClicks += Number(metrics.clicks || 0);
+        totalConversion += Number(metrics.conversions || 0);
+        totalConversionValue += Number(metrics.conversionsValue || 0);
+        
+        // 검색 노출 점유율이 있는 캠페인만 평균 계산
+        if (metrics.searchImpressionShare) {
+          totalSearchImprShare += Number(metrics.searchImpressionShare || 0);
+          searchImprShareCount++;
+        }
+      });
+
+      // 집계된 지표 계산
+      const ctr = totalImpressions ? totalClicks / totalImpressions : 0;
+      const cpc = totalClicks ? totalSpend / totalClicks : 0;
+      const cvr = totalClicks ? totalConversion / totalClicks : 0;
+      const cpm = totalImpressions ? (totalSpend / totalImpressions) * 1000 : 0;
+      const cpa = totalConversion ? totalSpend / totalConversion : 0;
+      const roas = totalSpend ? totalConversionValue / totalSpend : 0;
+      const aov = totalConversion ? totalConversionValue / totalConversion : 0;
+      const searchImprShare = searchImprShareCount ? (totalSearchImprShare / searchImprShareCount) * 100 : 0;
 
       return {
         date: yesterday,
-        campaign: campaign.name,
-        campaign_id: campaign.id.toString(),
-        spend,
-        impressions,
-        clicks,
+        campaign: campaignName,
+        spend: totalSpend,
+        impressions: totalImpressions,
+        clicks: totalClicks,
         ctr,
         cpc,
-        conversion,
-        conversion_value: conversionValue,
+        conversion: totalConversion,
+        conversion_value: totalConversionValue,
         roas,
         cvr,
         cpm,
         cpa,
         aov,
         search_impr_share: searchImprShare,
-        quality_score: qualityScore,
-        top_impr_rate: topImprRate
+        quality_score: 0, // 집계 레벨에서는 0
+        top_impr_rate: 0 // 별도 쿼리 필요
       };
-    });
+    }
+
+    // 4) 집계된 데이터 생성
+    const rows = [];
+    
+    // GoogleSA (일반 캠페인 집계)
+    const googleSAData = aggregateData(regularCampaigns, 'GoogleSA');
+    if (googleSAData) {
+      rows.push(googleSAData);
+    }
+
+    // PMAX (Performance Max 캠페인 집계)
+    const pmaxData = aggregateData(pmaxCampaigns, 'PMAX');
+    if (pmaxData) {
+      rows.push(pmaxData);
+    }
 
     console.log(`📝 처리된 구글 데이터 (${rows.length}건):`, rows);
 
-    // 4) Supabase upsert
+    // 5) Supabase upsert
     if (rows.length > 0) {
       console.log('💾 Supabase에 구글 데이터 저장 중...');
       const { data: upsertData, error } = await supa
         .from('google_insights')
-        .upsert(rows, { onConflict: ['date', 'campaign_id'] });
+        .upsert(rows, { onConflict: ['date', 'campaign'] });
 
       if (error) {
         console.error('❌ Supabase 에러:', error);

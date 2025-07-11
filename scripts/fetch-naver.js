@@ -400,8 +400,7 @@ class NaverDataTransformer {
       
       rows.push({
         date,
-        campaign: `파워링크 (${powerlink.campaignCount}개 캠페인)`,
-        campaign_id: 'POWERLINK_' + date.replace(/-/g, ''),
+        campaign: 'Naver SA',
         spend: Number(powerlink.spend.toFixed(2)),
         impressions: powerlink.impressions,
         clicks: powerlink.clicks,
@@ -418,8 +417,7 @@ class NaverDataTransformer {
       
       rows.push({
         date,
-        campaign: `브랜드검색 (${brand.campaignCount}개 캠페인)`,
-        campaign_id: 'BRAND_' + date.replace(/-/g, ''),
+        campaign: 'Naver BS',
         spend: Number(brand.spend.toFixed(2)),
         impressions: brand.impressions,
         clicks: brand.clicks,
@@ -664,7 +662,7 @@ async function fetchNaverData() {
       console.log('💾 Supabase에 네이버 데이터 저장 중...');
       const { data, error } = await supa
         .from(CONFIG.SUPABASE.TABLE)
-        .upsert(rows, { onConflict: ['date', 'campaign_id'] });
+        .upsert(rows, { onConflict: ['date', 'campaign'] });
 
       if (error) {
         console.error('❌ Supabase 에러:', error);
