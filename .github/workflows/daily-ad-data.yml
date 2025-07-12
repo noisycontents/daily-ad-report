@@ -27,23 +27,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # 4) Meta 데이터 수집
-      - name: Fetch Meta & upsert to Supabase
-        continue-on-error: true  # Meta 실패해도 계속 진행
+      # 4) 모든 플랫폼 데이터 수집 (통합)
+      - name: Fetch All Platforms & upsert to Supabase
         env:
+          # Meta 환경변수
           META_TOKEN: ${{ secrets.META_TOKEN }}
           AD_ACCOUNT: ${{ secrets.AD_ACCOUNT }}
-          SUPA_URL:   ${{ secrets.SUPA_URL }}
-          SUPA_KEY:   ${{ secrets.SUPA_KEY }}
-        run: node scripts/fetch-meta.js
-
-      # 5) Naver 데이터 수집
-      - name: Fetch Naver & upsert to Supabase
-        continue-on-error: true  # Naver 실패해도 워크플로우는 성공으로 표시
-        env:
+          # Google 환경변수
+          GOOGLE_CLIENT_EMAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
+          GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
+          GOOGLE_DEVELOPER_TOKEN: ${{ secrets.GOOGLE_DEVELOPER_TOKEN }}
+          GOOGLE_CUSTOMER_ID: ${{ secrets.GOOGLE_CUSTOMER_ID }}
+          GOOGLE_CLIENT_CUSTOMER_ID: ${{ secrets.GOOGLE_CLIENT_CUSTOMER_ID }}
+          # Naver 환경변수
           NAVER_API_KEY: ${{ secrets.NAVER_API_KEY }}
           NAVER_SECRET_KEY: ${{ secrets.NAVER_SECRET_KEY }}
           NAVER_CUSTOMER_ID: ${{ secrets.NAVER_CUSTOMER_ID }}
+          # Supabase 환경변수
           SUPA_URL: ${{ secrets.SUPA_URL }}
           SUPA_KEY: ${{ secrets.SUPA_KEY }}
-        run: node scripts/fetch-naver.js
+        run: node scripts/fetch-all-platforms.js

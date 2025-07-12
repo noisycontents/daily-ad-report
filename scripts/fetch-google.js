@@ -13,7 +13,7 @@ const GOOGLE_CLIENT_EMAIL = process.env.GOOGLE_CLIENT_EMAIL;
 const GOOGLE_PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY;
 const GOOGLE_DEVELOPER_TOKEN = process.env.GOOGLE_DEVELOPER_TOKEN;
 const GOOGLE_CUSTOMER_ID = process.env.GOOGLE_CUSTOMER_ID; // MCC 계정 ID (login-customer-id)
-const GOOGLE_CLIENT_CUSTOMER_ID = '738-465-6133'; // 실제 광고 계정 ID
+const GOOGLE_CLIENT_CUSTOMER_ID = process.env.GOOGLE_CLIENT_CUSTOMER_ID; // 실제 광고 계정 ID
 const SUPA_URL = process.env.SUPA_URL;
 const SUPA_KEY = process.env.SUPA_KEY;
 
