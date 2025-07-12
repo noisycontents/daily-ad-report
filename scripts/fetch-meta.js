@@ -9,14 +9,14 @@ dotenv.config();
 
 // 환경변수 읽기
 const META_TOKEN = process.env.META_TOKEN;
-const AD_ACCOUNT = process.env.AD_ACCOUNT;
+const META_AD_ACCOUNT = process.env.META_AD_ACCOUNT;
 const SUPA_URL   = process.env.SUPA_URL;
 const SUPA_KEY   = process.env.SUPA_KEY;
 
 // 환경변수 확인
 console.log('🔧 환경변수 체크:');
 console.log('META_TOKEN:', META_TOKEN ? '✅ 설정됨' : '❌ 없음');
-console.log('AD_ACCOUNT:', AD_ACCOUNT ? '✅ 설정됨' : '❌ 없음');
+  console.log('META_AD_ACCOUNT:', META_AD_ACCOUNT ? '✅ 설정됨' : '❌ 없음');
 console.log('SUPA_URL:', SUPA_URL ? '✅ 설정됨' : '❌ 없음');
 console.log('SUPA_KEY:', SUPA_KEY ? '✅ 설정됨' : '❌ 없음');
 
@@ -37,7 +37,7 @@ async function fetchAndUpsert() {
   console.log(`\n📅 ${yesterday} 데이터 수집 시작 (KST 기준 어제)...`);
 
   // 1) Meta API 호출
-  const url = `https://graph.facebook.com/v16.0/${AD_ACCOUNT}/insights` +
+  const url = `https://graph.facebook.com/v16.0/${META_AD_ACCOUNT}/insights` +
               `?time_range={'since':'${yesterday}','until':'${yesterday}'}` +
               `&fields=date_start,spend,impressions,clicks,actions,action_values,cost_per_action_type` +
               `&access_token=${META_TOKEN}`;

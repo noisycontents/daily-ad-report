@@ -32,7 +32,7 @@ jobs:
         env:
           # Meta 환경변수
           META_TOKEN: ${{ secrets.META_TOKEN }}
-          AD_ACCOUNT: ${{ secrets.AD_ACCOUNT }}
+          META_AD_ACCOUNT: ${{ secrets.META_AD_ACCOUNT }}
           # Google 환경변수
           GOOGLE_CLIENT_EMAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
           GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
