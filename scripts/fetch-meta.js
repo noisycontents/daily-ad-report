@@ -16,9 +16,22 @@ const SUPA_KEY   = process.env.SUPA_KEY;
 // 환경변수 확인
 console.log('🔧 환경변수 체크:');
 console.log('META_TOKEN:', META_TOKEN ? '✅ 설정됨' : '❌ 없음');
-  console.log('META_AD_ACCOUNT:', META_AD_ACCOUNT ? '✅ 설정됨' : '❌ 없음');
+console.log('META_AD_ACCOUNT:', META_AD_ACCOUNT ? '✅ 설정됨' : '❌ 없음');
 console.log('SUPA_URL:', SUPA_URL ? '✅ 설정됨' : '❌ 없음');
 console.log('SUPA_KEY:', SUPA_KEY ? '✅ 설정됨' : '❌ 없음');
+
+// 디버깅: 환경변수 값 일부 표시 (보안을 위해 일부만)
+console.log('🔍 환경변수 값 확인:');
+console.log('META_TOKEN 길이:', META_TOKEN ? META_TOKEN.length : 0);
+console.log('META_AD_ACCOUNT 값:', META_AD_ACCOUNT || '(없음)');
+console.log('SUPA_URL 값:', SUPA_URL || '(없음)');
+console.log('SUPA_KEY 길이:', SUPA_KEY ? SUPA_KEY.length : 0);
+
+// 필수 환경변수 검증
+if (!META_TOKEN || !META_AD_ACCOUNT || !SUPA_URL || !SUPA_KEY) {
+  console.error('❌ 필수 환경변수가 누락되었습니다.');
+  process.exit(1);
+}
 
 // Supabase 클라이언트
 const supa = createClient(SUPA_URL, SUPA_KEY);
