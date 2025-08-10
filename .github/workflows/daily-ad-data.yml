@@ -30,20 +30,33 @@ jobs:
       # 4) 모든 플랫폼 데이터 수집 (통합)
       - name: Fetch All Platforms & upsert to Supabase
         env:
-          # Meta 환경변수
+          # 기존 브랜드 - Meta 환경변수
           META_TOKEN: ${{ secrets.META_TOKEN }}
           META_AD_ACCOUNT: ${{ secrets.META_AD_ACCOUNT }}
-          # Google 환경변수
+          # 기존 브랜드 - Google 환경변수
           GOOGLE_CLIENT_EMAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
           GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
           GOOGLE_DEVELOPER_TOKEN: ${{ secrets.GOOGLE_DEVELOPER_TOKEN }}
           GOOGLE_CUSTOMER_ID: ${{ secrets.GOOGLE_CUSTOMER_ID }}
           GOOGLE_CLIENT_CUSTOMER_ID: ${{ secrets.GOOGLE_CLIENT_CUSTOMER_ID }}
-          # Naver 환경변수
+          # 기존 브랜드 - Naver 환경변수
           NAVER_API_KEY: ${{ secrets.NAVER_API_KEY }}
           NAVER_SECRET_KEY: ${{ secrets.NAVER_SECRET_KEY }}
           NAVER_CUSTOMER_ID: ${{ secrets.NAVER_CUSTOMER_ID }}
-          # Supabase 환경변수
-          SUPA_URL: ${{ secrets.SUPA_URL }}
-          SUPA_KEY: ${{ secrets.SUPA_KEY }}
+          # DOK 브랜드 - Meta 환경변수
+          DOK_META_TOKEN: ${{ secrets.DOK_META_TOKEN }}
+          DOK_META_AD_ACCOUNT: ${{ secrets.DOK_META_AD_ACCOUNT }}
+          # DOK 브랜드 - Google 환경변수
+          DOK_GOOGLE_CLIENT_EMAIL: ${{ secrets.DOK_GOOGLE_CLIENT_EMAIL }}
+          DOK_GOOGLE_PRIVATE_KEY: ${{ secrets.DOK_GOOGLE_PRIVATE_KEY }}
+          DOK_GOOGLE_DEVELOPER_TOKEN: ${{ secrets.DOK_GOOGLE_DEVELOPER_TOKEN }}
+          DOK_GOOGLE_CUSTOMER_ID: ${{ secrets.DOK_GOOGLE_CUSTOMER_ID }}
+          DOK_GOOGLE_CLIENT_CUSTOMER_ID: ${{ secrets.DOK_GOOGLE_CLIENT_CUSTOMER_ID }}
+          # DOK 브랜드 - Naver 환경변수
+          DOK_NAVER_API_KEY: ${{ secrets.DOK_NAVER_API_KEY }}
+          DOK_NAVER_SECRET_KEY: ${{ secrets.DOK_NAVER_SECRET_KEY }}
+          DOK_NAVER_CUSTOMER_ID: ${{ secrets.DOK_NAVER_CUSTOMER_ID }}
+          # Supabase 환경변수 (공통)
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: node scripts/fetch-all-platforms.js

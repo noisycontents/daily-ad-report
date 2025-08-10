@@ -9,11 +9,11 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // 환경변수 읽기 (Service Account 방식)
-const GOOGLE_CLIENT_EMAIL = process.env.GOOGLE_CLIENT_EMAIL;
-const GOOGLE_PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY;
-const GOOGLE_DEVELOPER_TOKEN = process.env.GOOGLE_DEVELOPER_TOKEN;
-const GOOGLE_CUSTOMER_ID = process.env.GOOGLE_CUSTOMER_ID; // MCC 계정 ID (login-customer-id)
-const GOOGLE_CLIENT_CUSTOMER_ID = process.env.GOOGLE_CLIENT_CUSTOMER_ID; // 실제 광고 계정 ID
+const GOOGLE_CLIENT_EMAIL = process.env.DOK_GOOGLE_CLIENT_EMAIL;
+const GOOGLE_PRIVATE_KEY = process.env.DOK_GOOGLE_PRIVATE_KEY;
+const GOOGLE_DEVELOPER_TOKEN = process.env.DOK_GOOGLE_DEVELOPER_TOKEN;
+const GOOGLE_CUSTOMER_ID = process.env.DOK_GOOGLE_CUSTOMER_ID; // MCC 계정 ID (login-customer-id)
+const GOOGLE_CLIENT_CUSTOMER_ID = process.env.DOK_GOOGLE_CLIENT_CUSTOMER_ID; // 실제 광고 계정 ID
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
@@ -46,17 +46,17 @@ async function fetchGoogleData() {
     // 1) 인증 방식 선택 (OAuth2 vs Service Account)
     let accessToken;
     
-    if (process.env.GOOGLE_REFRESH_TOKEN) {
+    if (process.env.DOK_GOOGLE_REFRESH_TOKEN) {
       console.log('🔄 OAuth2 인증 방식 사용...');
       
       const oauth2Client = new google.auth.OAuth2(
-        process.env.GOOGLE_CLIENT_ID,
-        process.env.GOOGLE_CLIENT_SECRET,
+        process.env.DOK_GOOGLE_CLIENT_ID,
+        process.env.DOK_GOOGLE_CLIENT_SECRET,
         'http://localhost'
       );
 
       oauth2Client.setCredentials({
-        refresh_token: process.env.GOOGLE_REFRESH_TOKEN
+        refresh_token: process.env.DOK_GOOGLE_REFRESH_TOKEN
       });
 
       await oauth2Client.getAccessToken();
@@ -225,7 +225,7 @@ async function fetchGoogleData() {
     if (rows.length > 0) {
       console.log('💾 Supabase에 구글 데이터 저장 중...');
       const { data: upsertData, error } = await supa
-        .from('google_insights')
+        .from('dok_google_insights')
         .upsert(rows, { onConflict: ['date', 'campaign'] });
 
       if (error) {

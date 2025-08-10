@@ -8,22 +8,22 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // 환경변수 읽기
-const META_TOKEN = process.env.META_TOKEN;
-const META_AD_ACCOUNT = process.env.META_AD_ACCOUNT;
+const META_TOKEN = process.env.DOK_META_TOKEN;
+const META_AD_ACCOUNT = process.env.DOK_META_AD_ACCOUNT;
 const SUPABASE_URL   = process.env.SUPABASE_URL;
 const SUPABASE_KEY   = process.env.SUPABASE_KEY;
 
 // 환경변수 확인
 console.log('🔧 환경변수 체크:');
-console.log('META_TOKEN:', META_TOKEN ? '✅ 설정됨' : '❌ 없음');
-console.log('META_AD_ACCOUNT:', META_AD_ACCOUNT ? '✅ 설정됨' : '❌ 없음');
+console.log('DOK_META_TOKEN:', META_TOKEN ? '✅ 설정됨' : '❌ 없음');
+console.log('DOK_META_AD_ACCOUNT:', META_AD_ACCOUNT ? '✅ 설정됨' : '❌ 없음');
 console.log('SUPABASE_URL:', SUPABASE_URL ? '✅ 설정됨' : '❌ 없음');
 console.log('SUPABASE_KEY:', SUPABASE_KEY ? '✅ 설정됨' : '❌ 없음');
 
 // 디버깅: 환경변수 값 일부 표시 (보안을 위해 일부만)
 console.log('🔍 환경변수 값 확인:');
-console.log('META_TOKEN 길이:', META_TOKEN ? META_TOKEN.length : 0);
-console.log('META_AD_ACCOUNT 값:', META_AD_ACCOUNT || '(없음)');
+console.log('DOK_META_TOKEN 길이:', META_TOKEN ? META_TOKEN.length : 0);
+console.log('DOK_META_AD_ACCOUNT 값:', META_AD_ACCOUNT || '(없음)');
 console.log('SUPABASE_URL 값:', SUPABASE_URL || '(없음)');
 console.log('SUPABASE_KEY 길이:', SUPABASE_KEY ? SUPABASE_KEY.length : 0);
 
@@ -49,6 +49,11 @@ async function fetchAndUpsert() {
   const yesterday = getKSTYesterday();
   console.log(`\n📅 ${yesterday} 데이터 수집 시작 (KST 기준 어제)...`);
 
+  const toNumber = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+
   // 1) Meta API 호출
   const url = `https://graph.facebook.com/v16.0/${META_AD_ACCOUNT}/insights` +
               `?time_range={'since':'${yesterday}','until':'${yesterday}'}` +
@@ -69,35 +74,34 @@ async function fetchAndUpsert() {
   const { data } = responseData;
 
   // 2) 데이터 처리 및 지표 계산
-  const rows = data.map(r => {
-    const date = r.date_start;
-    const spend = Number(r.spend);
-    const impressions = Number(r.impressions);
+  const rows = (Array.isArray(data) ? data : []).map(r => {
+    const date = r?.date_start ?? yesterday;
+    const spend = toNumber(r?.spend);
+    const impressions = toNumber(r?.impressions);
     
     // 링크클릭수 추출 (실제 마케팅 지표)
-    const linkClickAction = (r.actions || []).find(a => a.action_type === 'link_click');
-    const linkClicks = linkClickAction ? Number(linkClickAction.value) : 0;
+    const linkClickAction = (r?.actions || []).find(a => a.action_type === 'link_click');
+    const linkClicks = toNumber(linkClickAction?.value);
 
     // 구매 관련 지표 추출
-    const conversionCountAction = (r.actions || []).find(a => a.action_type === 'purchase');
-    const conversionValueAction = (r.action_values || []).find(a => a.action_type === 'purchase');
+    const conversionCountAction = (r?.actions || []).find(a => a.action_type === 'purchase');
+    const conversionValueAction = (r?.action_values || []).find(a => a.action_type === 'purchase');
     
-    const conversionCount = conversionCountAction ? Number(conversionCountAction.value) : 0;
-    const conversionValue = conversionValueAction ? Number(conversionValueAction.value) : 0;
+    const conversionCount = toNumber(conversionCountAction?.value);
+    const conversionValue = toNumber(conversionValueAction?.value);
 
     // CPA 계산 (API 값 우선, fallback으로 계산)
-    const cpaEntry = (r.cost_per_action_type || []).find(a => a.action_type === 'purchase');
-    const cpa = cpaEntry
-      ? Number(cpaEntry.value)
-      : (conversionCount ? spend / conversionCount : 0);
+    const cpaEntry = (r?.cost_per_action_type || []).find(a => a.action_type === 'purchase');
+    const cpaRaw = toNumber(cpaEntry?.value);
+    const cpa = cpaRaw > 0 ? cpaRaw : (conversionCount > 0 ? spend / conversionCount : 0);
 
-    // 핵심 지표 계산
-    const ctr = impressions ? linkClicks / impressions : 0;
-    const cpc = linkClicks ? spend / linkClicks : 0;
-    const cvr = linkClicks ? conversionCount / linkClicks : 0;
-    const cpm = impressions ? (spend / impressions) * 1000 : 0;
-    const roas = spend ? (conversionValue / spend) : 0;
-    const aov = conversionCount ? (conversionValue / conversionCount) : 0;
+    // 핵심 지표 계산 (0 division 방어)
+    const ctr = impressions > 0 ? linkClicks / impressions : 0;
+    const cpc = linkClicks > 0 ? spend / linkClicks : 0;
+    const cvr = linkClicks > 0 ? conversionCount / linkClicks : 0;
+    const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
+    const roas = spend > 0 ? (conversionValue / spend) : 0;
+    const aov = conversionCount > 0 ? (conversionValue / conversionCount) : 0;
 
     return {
       date,
@@ -129,7 +133,7 @@ async function fetchAndUpsert() {
   
   console.log('💾 Supabase에 데이터 저장 중...');
   const { data: upsertData, error } = await supa
-    .from('meta_insights')
+    .from('dok_meta_insights')
     .upsert(rows, { onConflict: ['date', 'campaign'] });
 
   if (error) {

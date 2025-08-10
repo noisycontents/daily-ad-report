@@ -16,9 +16,9 @@ dotenv.config();
 const CONFIG = {
   // 네이버 API 설정
   NAVER: {
-    API_KEY: process.env.NAVER_API_KEY,
-    SECRET_KEY: process.env.NAVER_SECRET_KEY,
-    CUSTOMER_ID: process.env.NAVER_CUSTOMER_ID,
+    API_KEY: process.env.DOK_NAVER_API_KEY,
+    SECRET_KEY: process.env.DOK_NAVER_SECRET_KEY,
+    CUSTOMER_ID: process.env.DOK_NAVER_CUSTOMER_ID,
     BASE_URL: 'https://api.searchad.naver.com',
     API_VERSION: '2'
   },
@@ -27,7 +27,7 @@ const CONFIG = {
   SUPABASE: {
     URL: process.env.SUPABASE_URL,
     KEY: process.env.SUPABASE_KEY,
-    TABLE: 'naver_insights'
+    TABLE: 'dok_naver_insights'
   },
   
   // 리포트 설정
@@ -39,7 +39,7 @@ const CONFIG = {
   
   // 광고 설정
   AD: {
-    BRAND_SEARCH_DAILY_SPEND: 51333,
+    BRAND_SEARCH_DAILY_SPEND: 19486,
     VAT_RATE: 1.1, // 10% VAT
     KST_OFFSET: 9 * 60 * 60 * 1000 // UTC+9
   },
