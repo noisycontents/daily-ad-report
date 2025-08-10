@@ -12,21 +12,6 @@ import crypto from 'crypto';
 
 dotenv.config();
 
-// DOK 네이버 환경변수 디버깅
-console.log('🔧 DOK 네이버 환경변수 체크:');
-console.log('DOK_NAVER_API_KEY:', process.env.DOK_NAVER_API_KEY ? '✅ 설정됨' : '❌ 누락');
-console.log('DOK_NAVER_SECRET_KEY:', process.env.DOK_NAVER_SECRET_KEY ? '✅ 설정됨' : '❌ 누락');
-console.log('DOK_NAVER_CUSTOMER_ID:', process.env.DOK_NAVER_CUSTOMER_ID ? '✅ 설정됨' : '❌ 누락');
-if (process.env.DOK_NAVER_API_KEY) {
-  console.log('🔍 DOK_NAVER_API_KEY 길이:', process.env.DOK_NAVER_API_KEY.length);
-}
-if (process.env.DOK_NAVER_SECRET_KEY) {
-  console.log('🔍 DOK_NAVER_SECRET_KEY 길이:', process.env.DOK_NAVER_SECRET_KEY.length);
-}
-if (process.env.DOK_NAVER_CUSTOMER_ID) {
-  console.log('🔍 DOK_NAVER_CUSTOMER_ID 값:', process.env.DOK_NAVER_CUSTOMER_ID);
-}
-
 /** @typedef {Object} NaverConfig */
 const CONFIG = {
   // 네이버 API 설정
@@ -162,20 +147,10 @@ class NaverAPIClient {
    */
   generateSignature(method, uri, timestamp) {
     const message = `${timestamp}.${method}.${uri}`;
-    console.log('🔐 시그니처 생성 디버그:');
-    console.log('- Method:', method);
-    console.log('- URI:', uri);
-    console.log('- Timestamp:', timestamp);
-    console.log('- Message:', message);
-    console.log('- SecretKey 길이:', this.secretKey?.length || 'undefined');
-    
-    const signature = crypto
+    return crypto
       .createHmac('sha256', this.secretKey)
       .update(message)
       .digest('base64');
-    
-    console.log('- Generated Signature:', signature);
-    return signature;
   }
 
   /**
