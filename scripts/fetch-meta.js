@@ -45,100 +45,105 @@ const getKSTYesterday = () => {
   return kstYesterday.toISOString().slice(0, 10);
 };
 
+// 0) 테스트용 날짜 설정 (비워두면 어제 날짜로 작동)
+const testDates = []; // 테스트할 날짜들 (예: ['2025-08-09'])
+
 async function fetchAndUpsert() {
-  const yesterday = getKSTYesterday();
-  console.log(`\n📅 ${yesterday} 데이터 수집 시작 (KST 기준 어제)...`);
+  const datesToRun = (Array.isArray(testDates) && testDates.length > 0)
+    ? testDates
+    : [getKSTYesterday()];
+  console.log(`\n📅 Meta 데이터 수집 시작 (총 ${datesToRun.length}개 날짜)`);
 
-  // 1) Meta API 호출
-  const url = `https://graph.facebook.com/v16.0/${META_AD_ACCOUNT}/insights` +
-              `?time_range={'since':'${yesterday}','until':'${yesterday}'}` +
-              `&fields=date_start,spend,impressions,clicks,actions,action_values,cost_per_action_type` +
-              `&access_token=${META_TOKEN}`;
+  for (const targetDate of datesToRun) {
+    console.log(`\n📅 처리 날짜: ${targetDate}`);
 
-  console.log('🌐 Meta API 호출 중...');
-  const res = await fetch(url);
-  if (!res.ok) {
-    const errorText = await res.text();
-    console.error('❌ Meta API 에러:', res.status, res.statusText);
-    console.error('응답 내용:', errorText);
-    throw new Error(`Meta API error: ${res.status} ${res.statusText}`);
-  }
-  
-  const responseData = await res.json();
-  console.log('📊 Meta API 응답:', responseData);
-  const { data } = responseData;
+    // 1) Meta API 호출
+    const url = `https://graph.facebook.com/v16.0/${META_AD_ACCOUNT}/insights` +
+                `?time_range={'since':'${targetDate}','until':'${targetDate}'}` +
+                `&fields=date_start,spend,impressions,clicks,actions,action_values,cost_per_action_type` +
+                `&access_token=${META_TOKEN}`;
 
-  // 2) 데이터 처리 및 지표 계산
-  const rows = data.map(r => {
-    const date = r.date_start;
-    const spend = Number(r.spend);
-    const impressions = Number(r.impressions);
+    console.log('🌐 Meta API 호출 중...');
+    const res = await fetch(url);
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('❌ Meta API 에러:', res.status, res.statusText);
+      console.error('응답 내용:', errorText);
+      throw new Error(`Meta API error: ${res.status} ${res.statusText}`);
+    }
     
-    // 링크클릭수 추출 (실제 마케팅 지표)
-    const linkClickAction = (r.actions || []).find(a => a.action_type === 'link_click');
-    const linkClicks = linkClickAction ? Number(linkClickAction.value) : 0;
+    const responseData = await res.json();
+    console.log('📊 Meta API 응답:', responseData);
+    const { data } = responseData;
 
-    // 구매 관련 지표 추출
-    const conversionCountAction = (r.actions || []).find(a => a.action_type === 'purchase');
-    const conversionValueAction = (r.action_values || []).find(a => a.action_type === 'purchase');
-    
-    const conversionCount = conversionCountAction ? Number(conversionCountAction.value) : 0;
-    const conversionValue = conversionValueAction ? Number(conversionValueAction.value) : 0;
+    // 2) 데이터 처리 및 지표 계산
+    const rows = data.map(r => {
+      const date = r.date_start || targetDate;
+      const spend = Number(r.spend);
+      const impressions = Number(r.impressions);
+      
+      const linkClickAction = (r.actions || []).find(a => a.action_type === 'link_click');
+      const linkClicks = linkClickAction ? Number(linkClickAction.value) : 0;
 
-    // CPA 계산 (API 값 우선, fallback으로 계산)
-    const cpaEntry = (r.cost_per_action_type || []).find(a => a.action_type === 'purchase');
-    const cpa = cpaEntry
-      ? Number(cpaEntry.value)
-      : (conversionCount ? spend / conversionCount : 0);
+      const conversionCountAction = (r.actions || []).find(a => a.action_type === 'purchase');
+      const conversionValueAction = (r.action_values || []).find(a => a.action_type === 'purchase');
+      
+      const conversionCount = conversionCountAction ? Number(conversionCountAction.value) : 0;
+      const conversionValue = conversionValueAction ? Number(conversionValueAction.value) : 0;
 
-    // 핵심 지표 계산
-    const ctr = impressions ? linkClicks / impressions : 0;
-    const cpc = linkClicks ? spend / linkClicks : 0;
-    const cvr = linkClicks ? conversionCount / linkClicks : 0;
-    const cpm = impressions ? (spend / impressions) * 1000 : 0;
-    const roas = spend ? (conversionValue / spend) : 0;
-    const aov = conversionCount ? (conversionValue / conversionCount) : 0;
+      const cpaEntry = (r.cost_per_action_type || []).find(a => a.action_type === 'purchase');
+      const cpa = cpaEntry
+        ? Number(cpaEntry.value)
+        : (conversionCount ? spend / conversionCount : 0);
 
-    return {
-      date,
-      campaign: 'Meta',
-      spend,
-      impressions,
-      clicks: linkClicks,
-      ctr,
-      cpc,
-      conversion: conversionCount,
-      conversion_value: conversionValue,
-      roas,
-      cvr,
-      cpm,
-      cpa,
-      aov,
-    };
-  });
+      const ctr = impressions ? linkClicks / impressions : 0;
+      const cpc = linkClicks ? spend / linkClicks : 0;
+      const cvr = linkClicks ? conversionCount / linkClicks : 0;
+      const cpm = impressions ? (spend / impressions) * 1000 : 0;
+      const roas = spend ? (conversionValue / spend) : 0;
+      const aov = conversionCount ? (conversionValue / conversionCount) : 0;
 
-  console.log(`📝 처리된 데이터 (${rows.length}건):`, rows);
-
-  // 3) Supabase에 데이터 저장
-  if (rows.length > 0) {
-    const now = new Date().toISOString();
-    rows.forEach(row => {
-      row.updated_at = now;
+      return {
+        date,
+        campaign: 'Meta',
+        spend,
+        impressions,
+        clicks: linkClicks,
+        ctr,
+        cpc,
+        conversion: conversionCount,
+        conversion_value: conversionValue,
+        roas,
+        cvr,
+        cpm,
+        cpa,
+        aov,
+      };
     });
-  }
-  
-  console.log('💾 Supabase에 데이터 저장 중...');
-  const { data: upsertData, error } = await supa
-    .from('meta_insights')
-    .upsert(rows, { onConflict: ['date', 'campaign'] });
 
-  if (error) {
-    console.error('❌ Supabase 에러:', error);
-    throw error;
+    console.log(`📝 처리된 데이터 (${rows.length}건):`, rows);
+
+    // 3) Supabase에 데이터 저장
+    if (rows.length > 0) {
+      const now = new Date().toISOString();
+      rows.forEach(row => {
+        row.updated_at = now;
+      });
+    }
+    
+    console.log('💾 Supabase에 데이터 저장 중...');
+    const { data: upsertData, error } = await supa
+      .from('meta_insights')
+      .upsert(rows, { onConflict: ['date', 'campaign'] });
+
+    if (error) {
+      console.error('❌ Supabase 에러:', error);
+      throw error;
+    }
+    
+    console.log('💾 Supabase 응답:', upsertData);
+    console.log(`✅ ${targetDate} 데이터 ${rows.length}건 upsert 완료`);
   }
-  
-  console.log('💾 Supabase 응답:', upsertData);
-  console.log(`✅ ${yesterday} 데이터 ${rows.length}건 upsert 완료`);
 }
 
 // 스크립트 직접 실행 시 (ES modules 방식)

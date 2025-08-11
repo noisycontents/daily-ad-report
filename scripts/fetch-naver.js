@@ -87,6 +87,9 @@ const getKSTYesterday = () => {
   return kstYesterday.toISOString().slice(0, 10);
 };
 
+// 0) 테스트용 날짜 설정 (비워두면 어제 날짜로 작동)
+const testDates = []; // 테스트할 날짜들 (예: ['2025-08-09'])
+
 /**
  * CSV 파싱 함수
  * @param {string} csvText - CSV 텍스트
@@ -594,8 +597,10 @@ class NaverDataAggregator {
  * @returns {Promise<void>}
  */
 async function fetchNaverData() {
-  const yesterday = getKSTYesterday();
-  console.log(`\n📅 네이버 광고 데이터 수집 시작 (${yesterday})...`);
+  const datesToRun = (Array.isArray(testDates) && testDates.length > 0)
+    ? testDates
+    : [getKSTYesterday()];
+  console.log(`\n📅 네이버 광고 데이터 수집 시작 (총 ${datesToRun.length}개 날짜)`);
 
   try {
     // API 클라이언트 초기화
@@ -604,74 +609,78 @@ async function fetchNaverData() {
     // Supabase 클라이언트 초기화
     const supa = createClient(CONFIG.SUPABASE.URL, CONFIG.SUPABASE.KEY);
 
-    // 1. 캠페인 타입 정보 수집
+    // 1. 캠페인 타입 정보 수집 (1회 공통)
     const campaignTypeMap = await apiClient.fetchCampaignTypes();
     await sleep(CONFIG.REPORT.API_DELAY);
-    
-    // 2. AD 성과 리포트 수집
-    const adReportData = await apiClient.createStatReport('AD', yesterday);
-    const adJobId = adReportData?.reportJobId || adReportData?.id;
-    
-    if (!adJobId) {
-      throw new Error('AD 리포트 작업 ID를 받지 못했습니다');
-    }
 
-    const adCsvData = await apiClient.processStatReport(adJobId, 'AD');
-    const adData = NaverDataTransformer.transformAdData(adCsvData);
-    
-    console.log(`✅ AD 성과 데이터 ${adData.length}개 수집 완료`);
-    if (adData.length > 0) {
-      console.log('📊 AD 데이터 샘플:', adData[0]);
-    }
+    for (const targetDate of datesToRun) {
+      console.log(`\n📅 처리 날짜: ${targetDate}`);
 
-    await sleep(CONFIG.REPORT.API_DELAY);
-    
-    // 3. 전환 리포트 수집
-    const convReportData = await apiClient.createStatReport('AD_CONVERSION', yesterday);
-    const convJobId = convReportData?.reportJobId || convReportData?.id;
-    
-    if (!convJobId) {
-      throw new Error('AD_CONVERSION 리포트 작업 ID를 받지 못했습니다');
-    }
-
-    const convCsvData = await apiClient.processStatReport(convJobId, 'AD_CONVERSION');
-    const conversionData = NaverDataTransformer.transformConversionData(convCsvData);
-    
-    console.log(`✅ 전환 데이터 ${conversionData.length}개 수집 완료`);
-    if (conversionData.length > 0) {
-      console.log('📊 전환 데이터 샘플:', conversionData[0]);
-    }
-    
-    // 4. 데이터 집계
-    const aggregatedData = NaverDataAggregator.aggregateReports(
-      adData, conversionData, campaignTypeMap
-    );
-    
-    // 5. Supabase 저장용 데이터 생성
-    const rows = NaverDataTransformer.createSupabaseData(aggregatedData, yesterday);
-    
-    console.log(`📝 처리된 네이버 데이터 (${rows.length}건):`, rows);
-    
-    // 6. Supabase 저장
-    if (rows.length > 0) {
-      const now = new Date().toISOString();
-      rows.forEach(row => {
-        row.updated_at = now;
-      });
+      // 2. AD 성과 리포트 수집
+      const adReportData = await apiClient.createStatReport('AD', targetDate);
+      const adJobId = adReportData?.reportJobId || adReportData?.id;
       
-      console.log('💾 Supabase에 네이버 데이터 저장 중...');
-      const { data, error } = await supa
-        .from(CONFIG.SUPABASE.TABLE)
-        .upsert(rows, { onConflict: ['date', 'campaign'] });
-
-      if (error) {
-        console.error('❌ Supabase 에러:', error);
-        throw error;
+      if (!adJobId) {
+        throw new Error('AD 리포트 작업 ID를 받지 못했습니다');
       }
 
-      console.log(`✅ ${yesterday} 네이버 데이터 ${rows.length}건 저장 완료`);
-    } else {
-      console.log('⚠️ 저장할 네이버 데이터가 없습니다.');
+      const adCsvData = await apiClient.processStatReport(adJobId, 'AD');
+      const adData = NaverDataTransformer.transformAdData(adCsvData);
+      
+      console.log(`✅ AD 성과 데이터 ${adData.length}개 수집 완료`);
+      if (adData.length > 0) {
+        console.log('📊 AD 데이터 샘플:', adData[0]);
+      }
+
+      await sleep(CONFIG.REPORT.API_DELAY);
+      
+      // 3. 전환 리포트 수집
+      const convReportData = await apiClient.createStatReport('AD_CONVERSION', targetDate);
+      const convJobId = convReportData?.reportJobId || convReportData?.id;
+      
+      if (!convJobId) {
+        throw new Error('AD_CONVERSION 리포트 작업 ID를 받지 못했습니다');
+      }
+
+      const convCsvData = await apiClient.processStatReport(convJobId, 'AD_CONVERSION');
+      const conversionData = NaverDataTransformer.transformConversionData(convCsvData);
+      
+      console.log(`✅ 전환 데이터 ${conversionData.length}개 수집 완료`);
+      if (conversionData.length > 0) {
+        console.log('📊 전환 데이터 샘플:', conversionData[0]);
+      }
+      
+      // 4. 데이터 집계
+      const aggregatedData = NaverDataAggregator.aggregateReports(
+        adData, conversionData, campaignTypeMap
+      );
+      
+      // 5. Supabase 저장용 데이터 생성
+      const rows = NaverDataTransformer.createSupabaseData(aggregatedData, targetDate);
+      
+      console.log(`📝 처리된 네이버 데이터 (${rows.length}건):`, rows);
+      
+      // 6. Supabase 저장
+      if (rows.length > 0) {
+        const now = new Date().toISOString();
+        rows.forEach(row => {
+          row.updated_at = now;
+        });
+        
+        console.log('💾 Supabase에 네이버 데이터 저장 중...');
+        const { data, error } = await supa
+          .from(CONFIG.SUPABASE.TABLE)
+          .upsert(rows, { onConflict: ['date', 'campaign'] });
+
+        if (error) {
+          console.error('❌ Supabase 에러:', error);
+          throw error;
+        }
+
+        console.log(`✅ ${targetDate} 네이버 데이터 ${rows.length}건 저장 완료`);
+      } else {
+        console.log('⚠️ 저장할 네이버 데이터가 없습니다.');
+      }
     }
 
   } catch (error) {
