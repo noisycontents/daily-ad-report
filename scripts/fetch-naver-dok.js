@@ -88,7 +88,16 @@ const getKSTYesterday = () => {
 };
 
 // 0) 테스트용 날짜 설정 (비워두면 어제 날짜로 작동)
-const testDates = ['2025-08-08']; // 테스트할 날짜들 (예: ['2025-08-09'])
+const testDates = []; // 테스트할 날짜들 (예: ['2025-08-09'])
+
+// 환경변수에서 TARGET_DATE 읽기 (백필 스크립트 지원)
+const getTargetDate = () => {
+  const envDate = process.env.TARGET_DATE;
+  if (envDate && /^\d{4}-\d{2}-\d{2}$/.test(envDate)) {
+    return envDate;
+  }
+  return null;
+};
 
 /**
  * CSV 파싱 함수
@@ -597,7 +606,11 @@ class NaverDataAggregator {
  * @returns {Promise<void>}
  */
 async function fetchNaverData() {
-  const datesToRun = (Array.isArray(testDates) && testDates.length > 0)
+  // 우선순위: TARGET_DATE 환경변수 > testDates 배열 > 어제 날짜
+  const envTargetDate = getTargetDate();
+  const datesToRun = envTargetDate 
+    ? [envTargetDate]
+    : (Array.isArray(testDates) && testDates.length > 0)
     ? testDates
     : [getKSTYesterday()];
   console.log(`\n📅 네이버 광고 데이터 수집 시작 (총 ${datesToRun.length}개 날짜)`);

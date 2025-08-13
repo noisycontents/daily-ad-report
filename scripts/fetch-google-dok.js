@@ -36,8 +36,21 @@ const getKSTYesterday = () => {
 // 0) 테스트용 날짜 설정 (비워두면 어제 날짜로 작동)
 const testDates = []; // 테스트할 날짜들 (비워두면 어제 날짜 사용)
 
+// 환경변수에서 TARGET_DATE 읽기 (백필 스크립트 지원)
+const getTargetDate = () => {
+  const envDate = process.env.TARGET_DATE;
+  if (envDate && /^\d{4}-\d{2}-\d{2}$/.test(envDate)) {
+    return envDate;
+  }
+  return null;
+};
+
 async function fetchGoogleData() {
-  const datesToRun = (Array.isArray(testDates) && testDates.length > 0)
+  // 우선순위: TARGET_DATE 환경변수 > testDates 배열 > 어제 날짜
+  const envTargetDate = getTargetDate();
+  const datesToRun = envTargetDate 
+    ? [envTargetDate]
+    : (Array.isArray(testDates) && testDates.length > 0)
     ? testDates
     : [getKSTYesterday()];
 
