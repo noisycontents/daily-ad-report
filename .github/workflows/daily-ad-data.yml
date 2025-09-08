@@ -48,6 +48,7 @@ jobs:
           DOK_META_TOKEN: ${{ secrets.DOK_META_TOKEN }}
           DOK_META_AD_ACCOUNT: ${{ secrets.DOK_META_AD_ACCOUNT }}
           # DOK 브랜드 - Google 환경변수
+          DOK_GOOGLE_CUSTOMER_ID: ${{ secrets.DOK_GOOGLE_CUSTOMER_ID }}
           DOK_GOOGLE_CLIENT_CUSTOMER_ID: ${{ secrets.DOK_GOOGLE_CLIENT_CUSTOMER_ID }}
           # DOK 브랜드 - Naver 환경변수
           DOK_NAVER_API_KEY: ${{ secrets.DOK_NAVER_API_KEY }}
