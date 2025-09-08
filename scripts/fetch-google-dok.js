@@ -102,6 +102,14 @@ async function fetchGoogleData() {
     const managerCustomerIdRaw = (DOK_GOOGLE_CUSTOMER_ID || GOOGLE_CUSTOMER_ID);
     const mccCustomerId = managerCustomerIdRaw.replace(/-/g, ''); // MCC 계정 (login-customer-id)
     const clientCustomerId = GOOGLE_CLIENT_CUSTOMER_ID.replace(/-/g, ''); // 실제 광고 계정 (API 엔드포인트)
+    
+    // 디버깅: 환경변수 값 확인
+    console.log('🔍 DOK Google 환경변수 확인:');
+    console.log('DOK_GOOGLE_CUSTOMER_ID:', DOK_GOOGLE_CUSTOMER_ID || '(없음)');
+    console.log('GOOGLE_CUSTOMER_ID:', GOOGLE_CUSTOMER_ID || '(없음)');
+    console.log('managerCustomerIdRaw:', managerCustomerIdRaw || '(없음)');
+    console.log('mccCustomerId:', mccCustomerId || '(없음)');
+    console.log('clientCustomerId:', clientCustomerId || '(없음)');
     const apiUrl = `https://googleads.googleapis.com/v20/customers/${clientCustomerId}/googleAds:search`;
 
     for (const targetDate of datesToRun) {
