@@ -266,6 +266,12 @@ class NaverAPIClient {
     // 리포트 완료 대기
     const reportData = await this.waitForReportCompletion(reportJobId, reportType);
     
+    // 데이터 없음 상태 처리
+    if (reportData.status === 'NO_DATA') {
+      console.log(`ℹ️ ${reportType}: 해당 날짜에 데이터 없음`);
+      return [];
+    }
+    
     // CSV 다운로드
     const csvData = await this.downloadCSV(reportData.downloadUrl, reportType);
     
@@ -301,6 +307,12 @@ class NaverAPIClient {
         
         if (status === 'FAILED') {
           throw new Error(`${reportType} 리포트 생성 실패: ${JSON.stringify(statusResponse.data)}`);
+        }
+        
+        // AD_CONVERSION 리포트에서 NONE 상태가 지속되면 데이터 없음으로 처리
+        if (reportType === 'AD_CONVERSION' && status === 'NONE' && attempts >= 5) {
+          console.log(`⚠️ ${reportType} 리포트: 해당 날짜에 전환 데이터 없음 (상태: ${status})`);
+          return { downloadUrl: null, status: 'NO_DATA' };
         }
       } catch (statusError) {
         console.log(`⚠️ ${reportType} 리포트 상태 확인 시도 ${attempts} 실패:`, statusError.message);

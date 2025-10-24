@@ -1,1 +1,0 @@
-# daily-ad-report
