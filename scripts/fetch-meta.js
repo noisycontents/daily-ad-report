@@ -77,15 +77,53 @@ async function fetchAndUpsert() {
                 `&access_token=${META_TOKEN}`;
 
     console.log('🌐 Meta API 호출 중...');
-    const res = await fetch(url);
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error('❌ Meta API 에러:', res.status, res.statusText);
-      console.error('응답 내용:', errorText);
-      throw new Error(`Meta API error: ${res.status} ${res.statusText}`);
-    }
     
-    const responseData = await res.json();
+    // 재시도 로직 (Rate Limit 대응)
+    let responseData;
+    const maxRetries = 3;
+    const baseDelay = 30000; // 30초 기본 대기
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const res = await fetch(url);
+        
+        if (res.ok) {
+          responseData = await res.json();
+          if (attempt > 1) {
+            console.log(`✅ Meta API 재시도 ${attempt}번째 성공!`);
+          }
+          break;
+        }
+        
+        const errorText = await res.text();
+        const errorData = JSON.parse(errorText);
+        
+        // Rate Limit 에러 확인 (code: 4, 17, 32, 613)
+        const isRateLimit = [4, 17, 32, 613].includes(errorData?.error?.code) || 
+                           errorData?.error?.is_transient === true;
+        
+        if (isRateLimit && attempt < maxRetries) {
+          const waitTime = baseDelay * Math.pow(2, attempt - 1); // 지수 백오프
+          console.log(`⚠️ Meta API Rate Limit (시도 ${attempt}/${maxRetries}): ${waitTime/1000}초 대기 후 재시도...`);
+          console.log(`📄 에러 내용: ${errorData?.error?.error_user_msg || errorData?.error?.message}`);
+          
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+        
+        // 재시도 불가능한 에러 또는 최대 시도 횟수 초과
+        console.error('❌ Meta API 에러:', res.status, res.statusText);
+        console.error('응답 내용:', errorText);
+        throw new Error(`Meta API error: ${res.status} ${res.statusText}`);
+        
+      } catch (fetchError) {
+        if (attempt === maxRetries) {
+          throw fetchError;
+        }
+        console.log(`⚠️ Meta API 네트워크 에러 (시도 ${attempt}/${maxRetries}): 30초 후 재시도...`);
+        await new Promise(resolve => setTimeout(resolve, 30000));
+      }
+    }
     console.log('📊 Meta API 응답:', responseData);
     const { data } = responseData;
 
