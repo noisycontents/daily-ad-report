@@ -6,7 +6,12 @@ on:
     # 서울시간 아침 7시(UTC 22:00)에 실행
     - cron: '0 22 * * *'
   # 수동 실행도 가능하게 워크플로우 디스패치 허용
-  workflow_dispatch: 
+  workflow_dispatch:
+    inputs:
+      target_date:
+        description: '처리할 날짜 (YYYY-MM-DD 형식, 비워두면 어제 날짜 사용)'
+        required: false
+        type: string 
 
 jobs:
   fetch-and-upsert:
@@ -57,4 +62,6 @@ jobs:
           # Supabase 환경변수 (공통)
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          # 특정 날짜 처리용 환경변수 (수동 실행 시 사용)
+          TARGET_DATE: ${{ inputs.target_date }}
         run: node scripts/fetch-all-platforms.js
